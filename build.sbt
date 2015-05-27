@@ -12,6 +12,7 @@ lazy val root = (project in file("."))
     ))
 
 
+    
 // import into Eclipse as a Scala project
 EclipseKeys.projectFlavor := EclipseProjectFlavor.Scala
 
