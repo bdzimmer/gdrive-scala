@@ -1,3 +1,5 @@
+// Copyright (c) 2015 Ben Zimmer. All rights reserved.
+
 // gdrive-scala project sbt file
 
 lazy val root = (project in file("."))
