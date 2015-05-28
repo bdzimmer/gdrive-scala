@@ -8,6 +8,9 @@ lazy val root = (project in file("."))
     version := "2015.05.26",
     organization := "bdzimmer",
     scalaVersion := "2.10.4",
+    
+    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+    
     libraryDependencies ++= Seq(
       "commons-io" % "commons-io" %  "2.4",
       "com.google.apis" % "google-api-services-drive" % "v2-rev167-1.20.0"
