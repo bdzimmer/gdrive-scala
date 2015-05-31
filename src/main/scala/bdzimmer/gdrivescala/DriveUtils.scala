@@ -88,7 +88,7 @@ object DriveUtils {
    */
   def getFileByParentAndTitle(drive: Drive, parent: File, title: String): File = {
 
-    val request = drive.files.list.setQ("'%s' in parents and title = '%s'".format(parent.getId, title))
+    val request = drive.files.list.setQ("'%s' in parents and title = '%s' and trashed = false".format(parent.getId, title))
     request.execute.getItems.asScala.toList.head
 
   }
