@@ -14,7 +14,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
-import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters._
 
 import org.apache.commons.io.ByteOrderMark
 import org.apache.commons.io.IOUtils
@@ -22,10 +22,11 @@ import org.apache.commons.io.input.BOMInputStream
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.http.FileContent
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.model.File
-
+import com.google.api.services.drive.model.ParentReference
 
 
 case class GoogleDriveKeys(CLIENT_ID: String, CLIENT_SECRET: String, ACCESS_TOKEN: String, REFRESH_TOKEN: String, REDIRECT_URI: String)
@@ -39,6 +40,8 @@ object DriveUtils {
 
 
   val FOLDER_TYPE = "application/vnd.google-apps.folder"
+  // val FILE_TYPE = "application/vnd.google-apps.file"
+  val FILE_TYPE = "application/octet-stream"
 
 
   /**
@@ -185,6 +188,51 @@ object DriveUtils {
     drive.files.get(file.getId).executeMediaAndDownloadTo(out)
   }
 
+
+
+  /**
+   * Upload a file to Drive (WIP).
+   *
+   * @param drive     Drive service
+   * @param filename  local file name to upload
+   * @param parent    parent folder on Drive to upload to
+   * @return          uploaded file
+   */
+   def uploadFile(drive: Drive, filename: String, parent: File): File = {
+
+     val localFile = new java.io.File(filename)
+
+     val metadata = new File
+     metadata.setTitle(localFile.getName)
+     metadata.setMimeType(FILE_TYPE)
+     metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
+
+     val mediaContent = new FileContent(FILE_TYPE, localFile)
+
+     drive.files.insert(metadata, mediaContent).execute
+
+   }
+
+
+
+   /**
+    * Create a folder in Drive (WIP).
+    *
+    * @param drive          Drive service
+    * @param foldername     name of folder to create
+    * @param parent         parent folder on Drive to create in
+    * @return               created folder
+    */
+    def createFolder(drive: Drive, foldername: String, parent: File): File = {
+
+      val metadata = new File
+      metadata.setTitle(foldername)
+      metadata.setMimeType(FOLDER_TYPE)
+      metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
+
+      drive.files.insert(metadata).execute
+
+    }
 
 
   /**
