@@ -39,9 +39,11 @@ case class GoogleDriveKeys(CLIENT_ID: String, CLIENT_SECRET: String, ACCESS_TOKE
 object DriveUtils {
 
 
+
   val FOLDER_TYPE = "application/vnd.google-apps.folder"
   // val FILE_TYPE = "application/vnd.google-apps.file"
   val FILE_TYPE = "application/octet-stream"
+
 
 
   /**
@@ -144,6 +146,7 @@ object DriveUtils {
   }
 
 
+
   /**
    * Get the text contents of a file.
    * Experimental.
@@ -233,6 +236,7 @@ object DriveUtils {
       drive.files.insert(metadata).execute
 
     }
+
 
 
   /**
