@@ -5,6 +5,8 @@
 
 // 2015-04 to 2015-05: Created.
 // 2015-05-26: Better comments.
+// 2015-06-26: Cleaned up formatting. Recently added file upload, folder creation,
+//             and file deletion.
 
 
 package bdzimmer.gdrivescala
@@ -194,48 +196,59 @@ object DriveUtils {
 
 
   /**
-   * Upload a file to Drive (WIP).
+   * Upload a file to Drive.
    *
    * @param drive     Drive service
    * @param filename  local file name to upload
    * @param parent    parent folder on Drive to upload to
    * @return          uploaded file
    */
-   def uploadFile(drive: Drive, filename: String, parent: File): File = {
+  def uploadFile(drive: Drive, filename: String, parent: File): File = {
 
-     val localFile = new java.io.File(filename)
+    val localFile = new java.io.File(filename)
 
-     val metadata = new File
-     metadata.setTitle(localFile.getName)
-     metadata.setMimeType(FILE_TYPE)
-     metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
+    val metadata =   new File
+    metadata.setTitle(localFile.getName)
+    metadata.setMimeType(FILE_TYPE)
+    metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
 
-     val mediaContent = new FileContent(FILE_TYPE, localFile)
+    val mediaContent = new FileContent(FILE_TYPE, localFile)
 
-     drive.files.insert(metadata, mediaContent).execute
+    drive.files.insert(metadata, mediaContent).execute
 
-   }
+  }
 
 
 
    /**
-    * Create a folder in Drive (WIP).
+    * Create a folder in Drive.
     *
     * @param drive          Drive service
     * @param foldername     name of folder to create
     * @param parent         parent folder on Drive to create in
     * @return               created folder
     */
-    def createFolder(drive: Drive, foldername: String, parent: File): File = {
+  def createFolder(drive: Drive, foldername: String, parent: File): File = {
 
-      val metadata = new File
-      metadata.setTitle(foldername)
-      metadata.setMimeType(FOLDER_TYPE)
-      metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
+    val metadata = new File
+    metadata.setTitle(foldername)
+    metadata.setMimeType(FOLDER_TYPE)
+    metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
 
-      drive.files.insert(metadata).execute
+    drive.files.insert(metadata).execute
 
-    }
+  }
+
+
+  /**
+   * Delete a file from Drive
+   *
+   * @param drive       Drive service
+   * @param file        file to delete
+   */
+  def deleteFile(drive: Drive, file: File): Unit = {
+    drive.files.delete(file.getId).execute
+  }
 
 
 
