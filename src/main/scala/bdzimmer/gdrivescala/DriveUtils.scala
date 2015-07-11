@@ -1,42 +1,32 @@
 // Copyright (c) 2015 Ben Zimmer. All rights reserved.
 
-// Small Scala library for common functionality with Google Drive.
-// Uses the Google Drive Java API.
-
 // 2015-04 to 2015-05: Created.
 // 2015-05-26: Better comments.
 // 2015-06-26: Cleaned up formatting. Recently added file upload, folder creation,
 //             and file deletion.
-
+// 2015-07-10: Recursive upload, download, and delete. Separated functions for
+//             getting Drive service into DriveBuilder object.
 
 package bdzimmer.gdrivescala
 
-
-import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.Properties
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.seqAsJavaListConverter
 
 import org.apache.commons.io.ByteOrderMark
 import org.apache.commons.io.IOUtils
 import org.apache.commons.io.input.BOMInputStream
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
-import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.FileContent
-import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.model.File
 import com.google.api.services.drive.model.ParentReference
 
 
-case class GoogleDriveKeys(CLIENT_ID: String, CLIENT_SECRET: String, ACCESS_TOKEN: String, REFRESH_TOKEN: String, REDIRECT_URI: String)
-
-
 
 /**
- * Object with methods for working with Google Drive.
+ * Object with methods for operating on files in Drive.
  */
 object DriveUtils {
 
@@ -121,35 +111,6 @@ object DriveUtils {
 
 
   /**
-   * Get a list of all non-folder descendants of a parent file, with path information.
-   * Intended to be used to reconstruct Drive file hierarchies locally.
-   *
-   * @param drive         Drive service
-   * @param parent        parent file
-   * @param parentPath    list of path elements
-   * @return list of tuples of file and list of path elements below parent
-   */
-  def getDescendantsPaths(drive: Drive, parent: File, parentPath: List[String]): List[(File, List[String])] = {
-
-    val children = DriveUtils.getFilesByParent(drive, parent)
-    val leaves = children.filter(!_.getMimeType.equals(DriveUtils.FOLDER_TYPE))
-
-    val folders = children.filter(_.getMimeType.equals(DriveUtils.FOLDER_TYPE))
-
-    // not sure why the path here ends up being of type List[Any]
-    // val foldersResult = folders.map(x => (x, (parentPath +: x.getTitle).toList))
-
-    val leavesResult = leaves.map(x => (x, parentPath :+ x.getTitle))
-
-    val foldersChildren = folders.flatMap(x => DriveUtils.getDescendantsPaths(drive, x, parentPath :+ x.getTitle))
-
-    leavesResult ++ foldersChildren
-
-  }
-
-
-
-  /**
    * Get the text contents of a file.
    * Experimental.
    *
@@ -182,20 +143,6 @@ object DriveUtils {
 
 
   /**
-   * Download a file from Drive.
-   *
-   * @param drive     Drive service
-   * @param file      file to download
-   * @param file      local file name to download to
-   */
-  def downloadFile(drive: Drive, file: File, filename: String): Unit = {
-    val out = new FileOutputStream(filename)
-    drive.files.get(file.getId).executeMediaAndDownloadTo(out)
-  }
-
-
-
-  /**
    * Upload a file to Drive.
    *
    * @param drive     Drive service
@@ -219,15 +166,28 @@ object DriveUtils {
   }
 
 
+  /**
+   * Download a file from Drive.
+   *
+   * @param drive     Drive service
+   * @param file      file to download
+   * @param file      local file name to download to
+   */
+  def downloadFile(drive: Drive, file: File, filename: String): Unit = {
+    val out = new FileOutputStream(filename)
+    drive.files.get(file.getId).executeMediaAndDownloadTo(out)
+  }
 
-   /**
-    * Create a folder in Drive.
-    *
-    * @param drive          Drive service
-    * @param foldername     name of folder to create
-    * @param parent         parent folder on Drive to create in
-    * @return               created folder
-    */
+
+
+  /**
+   * Create a folder in Drive.
+   *
+   * @param drive          Drive service
+   * @param foldername     name of folder to create
+   * @param parent         parent folder on Drive to create in
+   * @return               created folder
+   */
   def createFolder(drive: Drive, foldername: String, parent: File): File = {
 
     val metadata = new File
@@ -240,8 +200,9 @@ object DriveUtils {
   }
 
 
+
   /**
-   * Delete a file from Drive
+   * Delete a file from Drive.
    *
    * @param drive       Drive service
    * @param file        file to delete
@@ -253,78 +214,78 @@ object DriveUtils {
 
 
   /**
-   * Create a Google Drive service object from keys object
-   * and application name.
+   * Upload a file to Drive recursively (works with folders).
    *
-   * @param keys               keys object
-   * @param applicationName    application name
-   * @return Drive service object
+   * @param drive     drive service
+   * @param file      file to upload to
+   * @param parent    parent folder on Drive to upload to
    */
-  def getDrive(keys: GoogleDriveKeys, applicationName: String): Drive = {
+  def uploadFileRecursive(drive: Drive, file: java.io.File, parent: File): Unit = file.isDirectory match {
 
-    val httpTransport = new NetHttpTransport()
-    val jsonFactory = new JacksonFactory()
+    case false => {
+       // println("uploading file: " + file.getParentFile.getName + " " + file.getName)
+       DriveUtils.uploadFile(drive, file.getAbsolutePath, parent)
+    }
 
-    val credential = new GoogleCredential.Builder()
-     .setTransport(httpTransport)
-     .setJsonFactory(jsonFactory)
-     .setClientSecrets(keys.CLIENT_ID, keys.CLIENT_SECRET)
-     .build
-
-    credential.setAccessToken(keys.ACCESS_TOKEN)
-    credential.setRefreshToken(keys.REFRESH_TOKEN)
-
-    new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName(applicationName).build
+    case true => {
+       // println("uploading directory: " + file.getParentFile.getName + " " + file.getName)
+       val newParent = DriveUtils.createFolder(drive, file.getName, parent)
+       val childFiles = file.listFiles.toList
+       childFiles.foreach(uploadFileRecursive(drive, _, newParent))
+    }
 
   }
 
 
 
   /**
-   * Load keys from a properties file somewhere in the file system.
-   * This allows the properties to be stored outside of the codebase.
+   * Download a file from Drive recursively (works with folders).
    *
-   * @param filename      file name of properties file
-   * @return keys object
+   * @param drive     Drive service
+   * @param file      file to download
+   * @param file      local file name to download to
    */
-  def getKeysFromProperties(filename: String): GoogleDriveKeys = {
+  def downloadFileRecursive(drive: Drive, file: File, parent: java.io.File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
 
-    val prop = new Properties()
-    prop.load(new FileInputStream(filename))
+    case false => {
+      // println("downloading file: " + file.getTitle)
+      DriveUtils.downloadFile(drive, file, parent.getAbsolutePath + "/" + file.getTitle)
+    }
 
-    val CLIENT_ID = prop.getProperty("CLIENT_ID")
-    val CLIENT_SECRET = prop.getProperty("CLIENT_SECRET")
-
-    val ACCESS_TOKEN = prop.getProperty("ACCESS_TOKEN")
-    val REFRESH_TOKEN = prop.getProperty("REFRESH_TOKEN")
-
-    val REDIRECT_URI = prop.getProperty("REDIRECT_URI")
-
-    new GoogleDriveKeys(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN, REDIRECT_URI)
+    case true => {
+      // println("downloading directory: " + file.getTitle)
+      val newParent = new java.io.File(parent.getAbsolutePath + "/" + file.getTitle)
+      newParent.mkdir
+      val childFiles = DriveUtils.getFilesByParent(drive, file)
+      childFiles.foreach(downloadFileRecursive(drive, _, newParent))
+    }
 
   }
 
 
 
   /**
-   * Load Google Drive keys from environment variables
-   * (preferred method for Heroku).
+   * Delete a file from Drive recursively (works with folders).
    *
-   * @return keys object
+   * @param drive       Drive service
+   * @param file        file to delete
    */
-  def getKeysFromEnvironment(): GoogleDriveKeys = {
+  def deleteFileRecursive(drive: Drive, file: File):  Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
 
-    val CLIENT_ID = scala.util.Properties.envOrElse("GOOGLE_CLIENT_ID", "")
-    val CLIENT_SECRET = scala.util.Properties.envOrElse("GOOGLE_CLIENT_SECRET", "")
+    case false => {
+      // println("deleting file: " + file.getTitle)
+      DriveUtils.deleteFile(drive, file)
+    }
 
-    val ACCESS_TOKEN = scala.util.Properties.envOrElse("GOOGLE_ACCESS_TOKEN", "")
-    val REFRESH_TOKEN = scala.util.Properties.envOrElse("GOOGLE_REFRESH_TOKEN", "")
-
-    val REDIRECT_URI = scala.util.Properties.envOrElse("GOOGLE_REDIRECT_URI", "")
-
-    new GoogleDriveKeys(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN, REDIRECT_URI)
+    case true => {
+      println("deleting directory: " + file.getTitle)
+      val childFiles = DriveUtils.getFilesByParent(drive, file)
+      childFiles.foreach(deleteFileRecursive(drive, _))
+      DriveUtils.deleteFile(drive, file)
+    }
 
   }
+
 
 
 }
