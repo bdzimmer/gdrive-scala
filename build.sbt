@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
     name := "gdrive-scala",
     version := "2015.05.26",
     organization := "bdzimmer",
-    scalaVersion := "2.10.4",
+    scalaVersion := "2.10.5",
     
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
     
