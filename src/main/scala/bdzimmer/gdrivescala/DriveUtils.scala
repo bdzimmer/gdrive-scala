@@ -6,6 +6,9 @@
 //             and file deletion.
 // 2015-07-10: Recursive upload, download, and delete. Separated functions for
 //             getting Drive service into DriveBuilder object.
+// 2015-07-19: Functions that get individual files return Option[File]. Delete
+//             trashes rather than permanently deletes for safety.
+//             Upload that creates subfolders if they don't already exist.
 
 package bdzimmer.gdrivescala
 
@@ -62,7 +65,7 @@ object DriveUtils {
    *
    * @param drive     Drive service
    * @param parent    parent file
-   * @return list of non-trashed files that have the given parent file as a parent
+   * @return          list of non-trashed files that have the given parent file as a parent
    */
   def getFilesByParent(drive: Drive, parent: File): List[File] = {
 
@@ -81,12 +84,12 @@ object DriveUtils {
    * @param drive     Drive service
    * @param parent    parent file
    * @param title     title of file to get
-   * @return the matching file
+   * @return          the matching file or nothing
    */
-  def getFileByParentAndTitle(drive: Drive, parent: File, title: String): File = {
+  def getFileByParentAndTitle(drive: Drive, parent: File, title: String): Option[File] = {
 
     val request = drive.files.list.setQ("'%s' in parents and title = '%s' and trashed = false".format(parent.getId, title))
-    request.execute.getItems.asScala.toList.head
+    request.execute.getItems.asScala.toList.headOption
 
   }
 
@@ -98,13 +101,17 @@ object DriveUtils {
    * @param drive     Drive service
    * @param parent    parent file
    * @param path      list of path elements below parent to desired file
-   * @return the matching file
+   * @return          the matching file or nothing
    */
-  def getFileByPath(drive: Drive, parent: File, path: List[String]): File = path match {
+  def getFileByPath(drive: Drive, parent: File, path: List[String]): Option[File] = path match {
     case x :: Nil => getFileByParentAndTitle(drive, parent, x)
     case x :: xs => {
       val result = getFileByParentAndTitle(drive, parent, x)
-      getFileByPath(drive, result, xs)
+      result match {
+        case Some(f) => getFileByPath(drive, f, xs)
+        case None => None
+      }
+
     }
   }
 
@@ -116,7 +123,7 @@ object DriveUtils {
    *
    * @param drive     Drive service
    * @param file      file to get the contents of
-   * @return string of text contents of file
+   * @return          string of text contents of file
    */
   def getFileText(drive: Drive, file: File): String = {
 
@@ -202,13 +209,13 @@ object DriveUtils {
 
 
   /**
-   * Delete a file from Drive.
+   * Delete a file from Drive (move to trash).
    *
    * @param drive       Drive service
    * @param file        file to delete
    */
   def deleteFile(drive: Drive, file: File): Unit = {
-    drive.files.delete(file.getId).execute
+    drive.files.trash(file.getId).execute
   }
 
 
@@ -243,7 +250,7 @@ object DriveUtils {
    *
    * @param drive     Drive service
    * @param file      file to download
-   * @param file      local file name to download to
+   * @param parent    local file name to download to
    */
   def downloadFileRecursive(drive: Drive, file: File, parent: java.io.File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
 
@@ -270,7 +277,7 @@ object DriveUtils {
    * @param drive       Drive service
    * @param file        file to delete
    */
-  def deleteFileRecursive(drive: Drive, file: File):  Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
+  def deleteFileRecursive(drive: Drive, file: File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
 
     case false => {
       // println("deleting file: " + file.getTitle)
@@ -284,6 +291,49 @@ object DriveUtils {
       DriveUtils.deleteFile(drive, file)
     }
 
+  }
+
+
+
+  /**
+   * Upload a file into a Drive directory structure, creating
+   * any subfolders that don't exists.
+   *
+   * @param drive         Drive service
+   * @param parent        parent of subFolders
+   * @param subFolders    list of path elements below parent to desired folder
+   * @param localFile     local file name to upload
+   * @return              uploaded file or nothing
+   */
+  def uploadFileCreateFolders(drive: Drive, parent: File, subFolders: List[String], localFile: String): Option[File] = subFolders match {
+    case Nil => Some(DriveUtils.uploadFile(drive, localFile, parent))
+
+    case x :: xs => {
+      // check if folder named x exists
+      val curFolderOption = DriveUtils.getFileByParentAndTitle(drive, parent, x)
+      // if it doesn't exist, create it
+      val newParent = curFolderOption match {
+        case Some(f) => {
+          if (f.getMimeType.equals(DriveUtils.FOLDER_TYPE)) {
+            // x is a folder under parent
+            // println("folder exists: " + x)
+            f
+          } else {
+            // x is a file under parent
+            // println("file exists: " + x)
+            return None
+          }
+
+        }
+        case None => {
+          println("created: " + x)
+          DriveUtils.createFolder(drive, x, parent)
+        }
+      }
+
+      // recurse
+      uploadFileCreateFolders(drive, newParent, xs, localFile)
+    }
   }
 
 
