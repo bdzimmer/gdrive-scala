@@ -55,7 +55,6 @@ object DriveUtils {
     val rootId = "root"
     drive.files.get(rootId).execute
 
-
   }
 
 
@@ -255,6 +254,7 @@ object DriveUtils {
   def downloadFileRecursive(drive: Drive, file: File, parent: java.io.File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
 
     case false => {
+
       // println("downloading file: " + file.getTitle)
       DriveUtils.downloadFile(drive, file, parent.getAbsolutePath + "/" + file.getTitle)
     }
@@ -285,7 +285,7 @@ object DriveUtils {
     }
 
     case true => {
-      println("deleting directory: " + file.getTitle)
+      // println("deleting directory: " + file.getTitle)
       val childFiles = DriveUtils.getFilesByParent(drive, file)
       childFiles.foreach(deleteFileRecursive(drive, _))
       DriveUtils.deleteFile(drive, file)
@@ -297,7 +297,7 @@ object DriveUtils {
 
   /**
    * Upload a file into a Drive directory structure, creating
-   * any subfolders that don't exists.
+   * any subfolders that don't exist.
    *
    * @param drive         Drive service
    * @param parent        parent of subFolders
@@ -326,7 +326,7 @@ object DriveUtils {
 
         }
         case None => {
-          println("created: " + x)
+          // println("created: " + x)
           DriveUtils.createFolder(drive, x, parent)
         }
       }
