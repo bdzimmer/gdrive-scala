@@ -296,17 +296,17 @@ object DriveUtils {
 
 
   /**
-   * Upload a file into a Drive directory structure, creating
-   * any subfolders that don't exist.
+   * Create a path of folders recursively in Drive, doing nothing
+   * if they already exist.
    *
    * @param drive         Drive service
    * @param parent        parent of subFolders
    * @param subFolders    list of path elements below parent to desired folder
-   * @param localFile     local file name to upload
-   * @return              uploaded file or nothing
+   * @return              last folder in the list of path elements or nothing
    */
-  def uploadFileCreateFolders(drive: Drive, parent: File, subFolders: List[String], localFile: String): Option[File] = subFolders match {
-    case Nil => Some(DriveUtils.uploadFile(drive, localFile, parent))
+  def createFolders(drive: Drive, parent: File, subFolders: List[String]): Option[File] = subFolders match {
+
+    case Nil => Some(parent)
 
     case x :: xs => {
       // check if folder named x exists
@@ -332,8 +332,9 @@ object DriveUtils {
       }
 
       // recurse
-      uploadFileCreateFolders(drive, newParent, xs, localFile)
+      createFolders(drive, newParent, xs)
     }
+
   }
 
 
