@@ -1,6 +1,7 @@
 // Copyright (c) 2015 Ben Zimmer. All rights reserved.
 
 // 2015-07-10: Refactored from DriveUtils.
+// 2015-08-29: Style fixes.
 
 package bdzimmer.gdrivescala
 
@@ -13,8 +14,14 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 
 
-
-case class GoogleDriveKeys(CLIENT_ID: String, CLIENT_SECRET: String, ACCESS_TOKEN: String, REFRESH_TOKEN: String, REDIRECT_URI: String)
+// TODO: separate this into two case classes
+case class GoogleDriveKeys(
+    clientId: String,
+    clientSecret: String,
+    accessToken: String,
+    refreshToken: String,
+    redirectUri: String
+)
 
 
 
@@ -22,7 +29,6 @@ case class GoogleDriveKeys(CLIENT_ID: String, CLIENT_SECRET: String, ACCESS_TOKE
  * Object for creating a Google Drive service from keys.
  */
 object DriveBuilder {
-
 
 
   /**
@@ -41,11 +47,11 @@ object DriveBuilder {
     val credential = new GoogleCredential.Builder()
      .setTransport(httpTransport)
      .setJsonFactory(jsonFactory)
-     .setClientSecrets(keys.CLIENT_ID, keys.CLIENT_SECRET)
+     .setClientSecrets(keys.clientId, keys.clientSecret)
      .build
 
-    credential.setAccessToken(keys.ACCESS_TOKEN)
-    credential.setRefreshToken(keys.REFRESH_TOKEN)
+    credential.setAccessToken(keys.accessToken)
+    credential.setRefreshToken(keys.refreshToken)
 
     new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName(applicationName).build
 
@@ -65,16 +71,15 @@ object DriveBuilder {
     val prop = new Properties()
     prop.load(new FileInputStream(filename))
 
-    val CLIENT_ID = prop.getProperty("CLIENT_ID")
-    val CLIENT_SECRET = prop.getProperty("CLIENT_SECRET")
+    GoogleDriveKeys(
+      clientId = prop.getProperty("CLIENT_ID"),
+      clientSecret = prop.getProperty("CLIENT_SECRET"),
 
-    val ACCESS_TOKEN = prop.getProperty("ACCESS_TOKEN")
-    val REFRESH_TOKEN = prop.getProperty("REFRESH_TOKEN")
+      accessToken = prop.getProperty("ACCESS_TOKEN"),
+      refreshToken = prop.getProperty("REFRESH_TOKEN"),
 
-    val REDIRECT_URI = prop.getProperty("REDIRECT_URI")
-
-    new GoogleDriveKeys(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN, REDIRECT_URI)
-
+      redirectUri = prop.getProperty("REDIRECT_URI")
+    )
   }
 
 
@@ -87,16 +92,15 @@ object DriveBuilder {
    */
   def getKeysFromEnvironment(): GoogleDriveKeys = {
 
-    val CLIENT_ID = scala.util.Properties.envOrElse("GOOGLE_CLIENT_ID", "")
-    val CLIENT_SECRET = scala.util.Properties.envOrElse("GOOGLE_CLIENT_SECRET", "")
+    GoogleDriveKeys(
+      clientId = scala.util.Properties.envOrElse("GOOGLE_CLIENT_ID", ""),
+      clientSecret = scala.util.Properties.envOrElse("GOOGLE_CLIENT_SECRET", ""),
 
-    val ACCESS_TOKEN = scala.util.Properties.envOrElse("GOOGLE_ACCESS_TOKEN", "")
-    val REFRESH_TOKEN = scala.util.Properties.envOrElse("GOOGLE_REFRESH_TOKEN", "")
+      accessToken = scala.util.Properties.envOrElse("GOOGLE_ACCESS_TOKEN", ""),
+      refreshToken = scala.util.Properties.envOrElse("GOOGLE_REFRESH_TOKEN", ""),
 
-    val REDIRECT_URI = scala.util.Properties.envOrElse("GOOGLE_REDIRECT_URI", "")
-
-    new GoogleDriveKeys(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN, REDIRECT_URI)
-
+      redirectUri = scala.util.Properties.envOrElse("GOOGLE_REDIRECT_URI", "")
+    )
   }
 
 

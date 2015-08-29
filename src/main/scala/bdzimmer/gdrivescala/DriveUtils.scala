@@ -15,8 +15,7 @@ package bdzimmer.gdrivescala
 
 import java.io.FileOutputStream
 
-import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.collection.JavaConverters.seqAsJavaListConverter
+import scala.collection.JavaConverters._
 
 import org.apache.commons.io.{ByteOrderMark, IOUtils}
 import org.apache.commons.io.input.BOMInputStream

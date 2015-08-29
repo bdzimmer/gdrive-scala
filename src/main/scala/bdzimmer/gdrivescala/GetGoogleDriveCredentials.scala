@@ -8,17 +8,16 @@
 // Ben Zimmer
 
 // 2015-04: Created.
+// 2015-08-29: Style fixes.
 
 package bdzimmer.gdrivescala
 
 import java.awt.Desktop
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.{BufferedReader, InputStreamReader}
 import java.net.URI
 import java.util.Arrays
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+import com.google.api.client.googleapis.auth.oauth2.{GoogleAuthorizationCodeFlow, GoogleCredential}
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.DriveScopes
@@ -32,18 +31,18 @@ object GetGoogleDriveCredentials {
       // Set the application type to "Installed Application"
       // Click "Download JSON" to get JSON containing these.
 
-      val CLIENT_ID = ""
-      val CLIENT_SECRET = ""
-      val REDIRECT_URI = ""
+      val clientId = ""
+      val clientSecret = ""
+      val redirectUri = ""
 
       val httpTransport = new NetHttpTransport()
       val jsonFactory = new JacksonFactory()
 
       val flow = new GoogleAuthorizationCodeFlow.Builder(
-          httpTransport, jsonFactory, CLIENT_ID, CLIENT_SECRET, Arrays.asList(DriveScopes.DRIVE)).build
+          httpTransport, jsonFactory, clientId, clientSecret, Arrays.asList(DriveScopes.DRIVE)).build
 
 
-      val url = flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URI)
+      val url = flow.newAuthorizationUrl().setRedirectUri(redirectUri)
         .setAccessType("offline")
         .setApprovalPrompt("force").build()
 
@@ -55,11 +54,11 @@ object GetGoogleDriveCredentials {
       val br = new BufferedReader(new InputStreamReader(System.in))
       val code = br.readLine()
 
-      val response = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URI).execute
+      val response = flow.newTokenRequest(code).setRedirectUri(redirectUri).execute
       val credential = new GoogleCredential.Builder()
         .setTransport(httpTransport)
         .setJsonFactory(jsonFactory)
-        .setClientSecrets(CLIENT_ID, CLIENT_SECRET)
+        .setClientSecrets(clientId, clientSecret)
         .build
         .setFromTokenResponse(response)
 
