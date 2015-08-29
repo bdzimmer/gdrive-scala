@@ -160,7 +160,7 @@ class DriveUtilsSuite extends FunSuite {
       val testFoldername = "junk"
 
       val folder = DriveUtils.createFolder(drive, testFoldername, testingDir)
-      assert(folder.getMimeType.equals(DriveUtils.FOLDER_TYPE))
+      assert(folder.getMimeType.equals(DriveUtils.folderType))
 
       // confirm file exists by name
       assert(DriveUtils.getFileByParentAndTitle(drive, testingDir, testFoldername).isDefined)

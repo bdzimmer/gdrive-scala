@@ -9,6 +9,7 @@
 // 2015-07-19: Functions that get individual files return Option[File]. Delete
 //             trashes rather than permanently deletes for safety.
 //             Upload that creates subfolders if they don't already exist.
+// 2015-08-29: Style fixes.
 
 package bdzimmer.gdrivescala
 
@@ -17,14 +18,12 @@ import java.io.FileOutputStream
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.seqAsJavaListConverter
 
-import org.apache.commons.io.ByteOrderMark
-import org.apache.commons.io.IOUtils
+import org.apache.commons.io.{ByteOrderMark, IOUtils}
 import org.apache.commons.io.input.BOMInputStream
 
 import com.google.api.client.http.FileContent
 import com.google.api.services.drive.Drive
-import com.google.api.services.drive.model.File
-import com.google.api.services.drive.model.ParentReference
+import com.google.api.services.drive.model.{File, ParentReference}
 
 
 
@@ -33,11 +32,8 @@ import com.google.api.services.drive.model.ParentReference
  */
 object DriveUtils {
 
-
-
-  val FOLDER_TYPE = "application/vnd.google-apps.folder"
-  // val FILE_TYPE = "application/vnd.google-apps.file"
-  val FILE_TYPE = "application/octet-stream"
+  val folderType = "application/vnd.google-apps.folder"
+  val fileType = "application/octet-stream"
 
 
 
@@ -103,14 +99,10 @@ object DriveUtils {
    * @return          the matching file or nothing
    */
   def getFileByPath(drive: Drive, parent: File, path: List[String]): Option[File] = path match {
-    case x :: Nil => getFileByParentAndTitle(drive, parent, x)
-    case x :: xs => {
-      val result = getFileByParentAndTitle(drive, parent, x)
-      result match {
-        case Some(f) => getFileByPath(drive, f, xs)
-        case None => None
-      }
-
+    case Nil => Some(parent)
+    case x :: xs => getFileByParentAndTitle(drive, parent, x) match {
+      case Some(f) => getFileByPath(drive, f, xs)
+      case None => None
     }
   }
 
@@ -162,10 +154,10 @@ object DriveUtils {
 
     val metadata =   new File
     metadata.setTitle(localFile.getName)
-    metadata.setMimeType(FILE_TYPE)
+    metadata.setMimeType(fileType)
     metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
 
-    val mediaContent = new FileContent(FILE_TYPE, localFile)
+    val mediaContent = new FileContent(fileType, localFile)
 
     drive.files.insert(metadata, mediaContent).execute
 
@@ -174,6 +166,8 @@ object DriveUtils {
 
   /**
    * Download a file from Drive.
+   *
+   * 2015-08-29: Noticed that this fails when downloading an empty file.
    *
    * @param drive     Drive service
    * @param file      file to download
@@ -199,7 +193,7 @@ object DriveUtils {
 
     val metadata = new File
     metadata.setTitle(foldername)
-    metadata.setMimeType(FOLDER_TYPE)
+    metadata.setMimeType(folderType)
     metadata.setParents(List(new ParentReference().setId(parent.getId)).asJava)
 
     drive.files.insert(metadata).execute
@@ -252,7 +246,7 @@ object DriveUtils {
    * @param file      file to download
    * @param parent    local file name to download to
    */
-  def downloadFileRecursive(drive: Drive, file: File, parent: java.io.File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
+  def downloadFileRecursive(drive: Drive, file: File, parent: java.io.File): Unit = file.getMimeType.equals(folderType) match {
 
     case false => {
 
@@ -278,7 +272,7 @@ object DriveUtils {
    * @param drive       Drive service
    * @param file        file to delete
    */
-  def deleteFileRecursive(drive: Drive, file: File): Unit = file.getMimeType.equals(DriveUtils.FOLDER_TYPE) match {
+  def deleteFileRecursive(drive: Drive, file: File): Unit = file.getMimeType.equals(folderType) match {
 
     case false => {
       // println("deleting file: " + file.getTitle)
@@ -315,7 +309,7 @@ object DriveUtils {
       // if it doesn't exist, create it
       val newParent = curFolderOption match {
         case Some(f) => {
-          if (f.getMimeType.equals(DriveUtils.FOLDER_TYPE)) {
+          if (f.getMimeType.equals(folderType)) {
             // x is a folder under parent
             // println("folder exists: " + x)
             f
