@@ -32,3 +32,9 @@ EclipseKeys.executionEnvironment := Some(EclipseExecutionEnvironment.JavaSE17)
 
 // use the version of Scala from sbt in Eclipse - this doesn't seem to work
 EclipseKeys.withBundledScalaContainers := false
+
+// don't run tests in parallel
+parallelExecution in Test := false
+parallelExecution in IntegrationTest := false
+testForkedParallel in Test := false
+testForkedParallel in IntegrationTest := false

@@ -182,6 +182,7 @@ object DriveUtils {
   def downloadFile(drive: Drive, file: File, filename: String): Unit = {
     val out = new FileOutputStream(filename)
     drive.files.get(file.getId).executeMediaAndDownloadTo(out)
+    out.close()
   }
 
 
