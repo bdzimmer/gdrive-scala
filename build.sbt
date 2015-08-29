@@ -13,8 +13,14 @@ lazy val root = (project in file("."))
     
     libraryDependencies ++= Seq(
       "commons-io" % "commons-io" %  "2.4",
-      "com.google.apis" % "google-api-services-drive" % "v2-rev167-1.20.0"
-    ))
+      "com.google.apis" % "google-api-services-drive" % "v2-rev167-1.20.0",
+      "net.liftweb" %% "lift-json" % "2.6",
+      "org.scalatest" %% "scalatest" % "2.2.4" % "test"
+    ),
+    
+    unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
+    unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_))
+  )
 
 
     
@@ -24,5 +30,5 @@ EclipseKeys.projectFlavor := EclipseProjectFlavor.Scala
 // use Java 1.7 in Eclipse    
 EclipseKeys.executionEnvironment := Some(EclipseExecutionEnvironment.JavaSE17)
 
-// use the version of Scala from sbt in Eclipse
+// use the version of Scala from sbt in Eclipse - this doesn't seem to work
 EclipseKeys.withBundledScalaContainers := false
