@@ -162,7 +162,7 @@ object DriveBuilder {
     val main = JsonParser.parse(json)
 
     val accessToken = extractStr(main \ "access_token")
-    val refreshToken = extractStr(main \ "refreshToken")
+    val refreshToken = extractStr(main \ "refresh_token")
 
     GoogleAccessToken(
       accessToken = accessToken,
