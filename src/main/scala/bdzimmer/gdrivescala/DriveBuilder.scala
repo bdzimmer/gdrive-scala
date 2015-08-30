@@ -1,7 +1,7 @@
 // Copyright (c) 2015 Ben Zimmer. All rights reserved.
 
 // 2015-07-10: Refactored from DriveUtils.
-// 2015-08-29: Style fixes.
+// 2015-08-29: Style fixes. Separating client id and access token; load from JSON files.
 
 package bdzimmer.gdrivescala
 
@@ -13,16 +13,30 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 
+import net.liftweb.json.JsonParser
+import net.liftweb.json.JsonParser._
+import net.liftweb.json.JsonAST._
 
-// TODO: separate this into two case classes
+import org.apache.commons.io.FileUtils
+
+import scala.collection.JavaConverters._
+
+
 case class GoogleDriveKeys(
+    id: GoogleClientId,
+    token: GoogleAccessToken
+)
+
+case class GoogleClientId(
     clientId: String,
     clientSecret: String,
-    accessToken: String,
-    refreshToken: String,
     redirectUri: String
 )
 
+case class GoogleAccessToken(
+    accessToken: String,
+    refreshToken: String
+)
 
 
 /**
@@ -47,11 +61,11 @@ object DriveBuilder {
     val credential = new GoogleCredential.Builder()
      .setTransport(httpTransport)
      .setJsonFactory(jsonFactory)
-     .setClientSecrets(keys.clientId, keys.clientSecret)
+     .setClientSecrets(keys.id.clientId, keys.id.clientSecret)
      .build
 
-    credential.setAccessToken(keys.accessToken)
-    credential.setRefreshToken(keys.refreshToken)
+    credential.setAccessToken(keys.token.accessToken)
+    credential.setRefreshToken(keys.token.refreshToken)
 
     new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName(applicationName).build
 
@@ -72,13 +86,15 @@ object DriveBuilder {
     prop.load(new FileInputStream(filename))
 
     GoogleDriveKeys(
-      clientId = prop.getProperty("CLIENT_ID"),
-      clientSecret = prop.getProperty("CLIENT_SECRET"),
-
-      accessToken = prop.getProperty("ACCESS_TOKEN"),
-      refreshToken = prop.getProperty("REFRESH_TOKEN"),
-
-      redirectUri = prop.getProperty("REDIRECT_URI")
+      id = GoogleClientId(
+        clientId = prop.getProperty("CLIENT_ID"),
+        clientSecret = prop.getProperty("CLIENT_SECRET"),
+        redirectUri = prop.getProperty("REDIRECT_URI")
+      ),
+      token = GoogleAccessToken(
+        accessToken = prop.getProperty("ACCESS_TOKEN"),
+        refreshToken = prop.getProperty("REFRESH_TOKEN")
+      )
     )
   }
 
@@ -93,15 +109,72 @@ object DriveBuilder {
   def getKeysFromEnvironment(): GoogleDriveKeys = {
 
     GoogleDriveKeys(
-      clientId = scala.util.Properties.envOrElse("GOOGLE_CLIENT_ID", ""),
-      clientSecret = scala.util.Properties.envOrElse("GOOGLE_CLIENT_SECRET", ""),
-
-      accessToken = scala.util.Properties.envOrElse("GOOGLE_ACCESS_TOKEN", ""),
-      refreshToken = scala.util.Properties.envOrElse("GOOGLE_REFRESH_TOKEN", ""),
-
-      redirectUri = scala.util.Properties.envOrElse("GOOGLE_REDIRECT_URI", "")
+      id = GoogleClientId(
+        clientId = scala.util.Properties.envOrElse("GOOGLE_CLIENT_ID", ""),
+        clientSecret = scala.util.Properties.envOrElse("GOOGLE_CLIENT_SECRET", ""),
+        redirectUri = scala.util.Properties.envOrElse("GOOGLE_REDIRECT_URI", "")
+      ),
+      token = GoogleAccessToken(
+        accessToken = scala.util.Properties.envOrElse("GOOGLE_ACCESS_TOKEN", ""),
+        refreshToken = scala.util.Properties.envOrElse("GOOGLE_REFRESH_TOKEN", "")
+      )
     )
   }
 
+
+
+  /**
+   * Load Google Drive client id from a JSON file.
+   *
+   * @param inputFile      JSON file to read
+   * @return client id object
+   */
+  def getClientIdFromJsonFile(inputFile: java.io.File): GoogleClientId = {
+
+    val json = FileUtils.readLines(inputFile).asScala.mkString("\n")
+    val main = JsonParser.parse(json) \ "installed"
+
+    val clientId = extractStr(main \ "client_id")
+    val clientSecret = extractStr(main \ "client_secret")
+    val redirectUri = (main \ "redirect_uris") match {
+      case JArray(x) => x.headOption.map(x => extractStr(x)).getOrElse("")
+      case _ => ""
+    }
+
+    GoogleClientId(
+      clientId = clientId,
+      clientSecret = clientSecret,
+      redirectUri = redirectUri
+    )
+  }
+
+
+
+  /**
+   * Load Google Drive access token from a JSON file.
+   *
+   * @param inputFile     JSON file to read
+   * @return access token object
+   */
+  def getAccessTokenFromJsonFile(inputFile: java.io.File): GoogleAccessToken = {
+
+    val json = FileUtils.readLines(inputFile).asScala.mkString("\n")
+    val main = JsonParser.parse(json)
+
+    val accessToken = extractStr(main \ "access_token")
+    val refreshToken = extractStr(main \ "refreshToken")
+
+    GoogleAccessToken(
+      accessToken = accessToken,
+      refreshToken = refreshToken
+    )
+  }
+
+
+  // helper function for parsing JSON
+  private def extractStr(jval: JValue, default: String = ""): String = jval match {
+    case JString(x) => x
+    case _ => default
+  }
 
 }

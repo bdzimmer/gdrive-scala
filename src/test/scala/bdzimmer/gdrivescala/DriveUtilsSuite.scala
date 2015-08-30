@@ -30,10 +30,12 @@ class DriveUtilsSuite extends FunSuite {
   // Extra files under these directories may cause incorrect test
   // results.
 
+  val keyDirname = "C:/Ben/tmp/"
 
-  // for now, get the drive keys from a properties file.
-  val drivePropertiesFile = "C:/Ben/tmp/googledrive.properties"
-  val keys = DriveBuilder.getKeysFromProperties(drivePropertiesFile)
+  val keys = GoogleDriveKeys(
+      id = DriveBuilder.getClientIdFromJsonFile(new java.io.File(keyDirname + "client_secret.json")),
+      token = DriveBuilder.getAccessTokenFromJsonFile(new java.io.File(keyDirname + "access_token.json")))
+
   val drive = DriveBuilder.getDrive(keys, "DriveTesting")
 
   val root = DriveUtils.getRoot(drive)

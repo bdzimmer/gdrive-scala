@@ -8,7 +8,7 @@
 // Ben Zimmer
 
 // 2015-04: Created.
-// 2015-08-29: Style fixes.
+// 2015-08-29: Style fixes. Reads / writes JSON files.
 
 package bdzimmer.gdrivescala
 
@@ -22,51 +22,89 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.DriveScopes
 
+import org.apache.commons.io.FileUtils
+
 
 object GetGoogleDriveCredentials {
 
-    def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
 
-      // Get these by creating a new OAuth client ID in Google Developers Console.
-      // Set the application type to "Installed Application"
-      // Click "Download JSON" to get JSON containing these.
+    // Get these by creating a new OAuth client ID in Google Developers Console.
+    // Set the application type to "Installed Application"
+    // Click "Download JSON" to get JSON file.
+    // First argument is path to location of this file.
 
-      val clientId = ""
-      val clientSecret = ""
-      val redirectUri = ""
+    val inputDirname = args.head
+    val inputDir = new java.io.File(inputDirname)
 
-      val httpTransport = new NetHttpTransport()
-      val jsonFactory = new JacksonFactory()
+    val inputFileOption = for {
+      inputDir <- inputDir.exists match {
+        case true => {
+          println("input directory exists")
+          Some(inputDir)}
+        case false => None
+      }
 
-      val flow = new GoogleAuthorizationCodeFlow.Builder(
-          httpTransport, jsonFactory, clientId, clientSecret, Arrays.asList(DriveScopes.DRIVE)).build
+      inputFile <- (inputDir
+        .listFiles
+        .filter(x => x.getName.startsWith("client_secret") && x.getName.endsWith(".json"))
+        .headOption)
+
+    } yield inputFile
+
+    inputFileOption match {
+      case Some(inputFile) => {
+
+        val clientId = DriveBuilder.getClientIdFromJsonFile(inputFile)
+
+        val httpTransport = new NetHttpTransport()
+        val jsonFactory = new JacksonFactory()
+
+        val flow = new GoogleAuthorizationCodeFlow.Builder(
+            httpTransport, jsonFactory,
+            clientId.clientId, clientId.clientSecret,
+            Arrays.asList(DriveScopes.DRIVE)).build
+
+        val url = flow.newAuthorizationUrl().setRedirectUri(clientId.redirectUri)
+          .setAccessType("offline")
+          .setApprovalPrompt("force").build()
+
+        // open default web browser with URL
+        Desktop.getDesktop.browse(new URI(url))
+
+        println("Enter the authorization code:")
+        val br = new BufferedReader(new InputStreamReader(System.in))
+        val code = br.readLine()
+
+        val response = flow.newTokenRequest(code).setRedirectUri(clientId.redirectUri).execute
+
+        // I don't think that this is necessary here. I'm after the access / refresh tokens,
+        // and those are in the response JSON.
+        /*
+        val credential = new GoogleCredential.Builder()
+          .setTransport(httpTransport)
+          .setJsonFactory(jsonFactory)
+          .setClientSecrets(clientId.clientId, clientId.clientSecret)
+          .build
+          .setFromTokenResponse(response)
 
 
-      val url = flow.newAuthorizationUrl().setRedirectUri(redirectUri)
-        .setAccessType("offline")
-        .setApprovalPrompt("force").build()
+        println("Access token: " + credential.getAccessToken)
+        println("Refresh token: " + credential.getRefreshToken)
+        */
 
+        // save the response to a file
+        val outputFilename = inputDir + "/access_token.json"
+        val outputFile = new java.io.File(outputFilename)
+        FileUtils.writeStringToFile(
+            outputFile, response.toPrettyString,
+            java.nio.charset.StandardCharsets.UTF_8)
 
-      // open default web browser with URL
-      Desktop.getDesktop.browse(new URI(url))
+        println("created " + outputFilename)
+      }
 
-      println("Enter the authorization code:")
-      val br = new BufferedReader(new InputStreamReader(System.in))
-      val code = br.readLine()
+      case None => println("client_secret*.json not found!")
+    }
 
-      val response = flow.newTokenRequest(code).setRedirectUri(redirectUri).execute
-      val credential = new GoogleCredential.Builder()
-        .setTransport(httpTransport)
-        .setJsonFactory(jsonFactory)
-        .setClientSecrets(clientId, clientSecret)
-        .build
-        .setFromTokenResponse(response)
-
-
-      println("Access token: " + credential.getAccessToken)
-      println("Refresh token: " + credential.getRefreshToken)
-
-     }
-
-
+  }
 }
