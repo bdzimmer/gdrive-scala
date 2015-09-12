@@ -2,6 +2,12 @@
 
 // gdrive-scala project sbt file
 
+val whichJvmSettings = sys.props.getOrElse("jvm", default = "7")
+val jvmSettings = whichJvmSettings match {
+  case "6" => JvmSettings("1.6", "1.6", "1.6")
+  case _ => JvmSettings("1.7", "1.7", "1.7")
+}
+
 lazy val root = (project in file("."))
   .settings(
     name := "gdrive-scala",
@@ -9,7 +15,8 @@ lazy val root = (project in file("."))
     organization := "bdzimmer",
     scalaVersion := "2.10.5",
     
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+    javacOptions ++= Seq("-source", jvmSettings.javacSource, "-target", jvmSettings.javacTarget),
+    scalacOptions ++= Seq(s"-target:jvm-${jvmSettings.scalacTarget}"),
     
     libraryDependencies ++= Seq(
       "commons-io" % "commons-io" %  "2.4",

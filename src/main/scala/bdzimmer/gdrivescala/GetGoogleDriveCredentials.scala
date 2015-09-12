@@ -16,6 +16,7 @@ import java.awt.Desktop
 import java.io.{BufferedReader, InputStreamReader}
 import java.net.URI
 import java.util.Arrays
+// import java.nio.charset.StandardCharsets
 
 import com.google.api.client.googleapis.auth.oauth2.{GoogleAuthorizationCodeFlow, GoogleCredential}
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -98,7 +99,7 @@ object GetGoogleDriveCredentials {
         val outputFile = new java.io.File(outputFilename)
         FileUtils.writeStringToFile(
             outputFile, response.toPrettyString,
-            java.nio.charset.StandardCharsets.UTF_8)
+            "UTF-8")
 
         println("created " + outputFilename)
       }
