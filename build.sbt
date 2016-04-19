@@ -13,7 +13,7 @@ lazy val root = (project in file("."))
     name := "gdrive-scala",
     version := "2015.05.26",
     organization := "bdzimmer",
-    scalaVersion := "2.10.5",
+    scalaVersion := "2.10.6",
     
     javacOptions ++= Seq("-source", jvmSettings.javacSource, "-target", jvmSettings.javacTarget),
     scalacOptions ++= Seq(s"-target:jvm-${jvmSettings.scalacTarget}"),
