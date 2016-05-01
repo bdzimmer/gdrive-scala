@@ -2,24 +2,23 @@
 
 // 2015-07-10: Refactored from DriveUtils.
 // 2015-08-29: Style fixes. Separating client id and access token; load from JSON files.
+// 2016-04-30: JSON parsing with Jackson.
 
 package bdzimmer.gdrivescala
 
 import java.io.FileInputStream
 import java.util.Properties
 
+import scala.collection.JavaConverters._
+
+import com.fasterxml.jackson.core.{JsonFactory, JsonToken}
+
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.drive.Drive
 
-import net.liftweb.json.JsonParser
-import net.liftweb.json.JsonParser._
-import net.liftweb.json.JsonAST._
-
 import org.apache.commons.io.FileUtils
-
-import scala.collection.JavaConverters._
 
 
 case class GoogleDriveKeys(
@@ -132,13 +131,45 @@ object DriveBuilder {
   def getClientIdFromJsonFile(inputFile: java.io.File): GoogleClientId = {
 
     val json = FileUtils.readLines(inputFile).asScala.mkString("\n")
-    val main = JsonParser.parse(json) \ "installed"
 
-    val clientId = extractStr(main \ "client_id")
-    val clientSecret = extractStr(main \ "client_secret")
-    val redirectUri = (main \ "redirect_uris") match {
-      case JArray(x) => x.headOption.map(x => extractStr(x)).getOrElse("")
-      case _ => ""
+    val parser = new JsonFactory().createJsonParser(json);
+    var clientId:     String = ""
+    var clientSecret: String = ""
+    var redirectUri:  String = ""
+
+    try {
+      parser.nextToken()
+      while(!parser.isClosed && parser.nextToken() != JsonToken.END_OBJECT) {
+        if ("installed".equals(parser.getCurrentName)) {
+          parser.nextToken() // {
+          while(!parser.isClosed && parser.nextToken() != JsonToken.END_OBJECT) {
+            val k = parser.getCurrentName()
+            if ("client_id".equals(k)) {
+              parser.nextToken()
+              clientId = parser.getValueAsString()
+            } else if ("client_secret".equals(k)) {
+              parser.nextToken()
+              clientSecret = parser.getValueAsString()
+            } else if ("redirect_uris".equals(k)) {
+              parser.nextToken() // [
+              var done = false;
+              while(!parser.isClosed && parser.nextToken() != JsonToken.END_ARRAY) {
+                if ("".equals(redirectUri)) {  // get only the first element of the list
+                  redirectUri = parser.getValueAsString("")
+                } else {
+                  parser.skipChildren()
+                }
+              }
+            } else {
+              parser.skipChildren()
+            }
+          }
+        } else {
+          parser.skipChildren()
+        }
+      }
+    } catch {
+      case _: Throwable => // do nothing
     }
 
     GoogleClientId(
@@ -159,22 +190,34 @@ object DriveBuilder {
   def getAccessTokenFromJsonFile(inputFile: java.io.File): GoogleAccessToken = {
 
     val json = FileUtils.readLines(inputFile).asScala.mkString("\n")
-    val main = JsonParser.parse(json)
 
-    val accessToken = extractStr(main \ "access_token")
-    val refreshToken = extractStr(main \ "refresh_token")
+    val parser = new JsonFactory().createJsonParser(json);
+    var accessToken:  String = ""
+    var refreshToken: String = ""
+
+    try {
+      parser.nextToken()
+      while(!parser.isClosed && parser.nextToken() != JsonToken.END_OBJECT) {
+        val k = parser.getCurrentName()
+        if ("access_token".equals(k)) {
+          parser.nextToken();
+          accessToken = parser.getValueAsString("")
+        } else if ("refresh_token".equals(k)) {
+          parser.nextToken();
+          refreshToken = parser.getValueAsString("")
+        } else {
+          parser.skipChildren()
+        }
+      }
+    } catch {
+      case _: Throwable => // do nothing
+    }
+
 
     GoogleAccessToken(
       accessToken = accessToken,
       refreshToken = refreshToken
     )
-  }
-
-
-  // helper function for parsing JSON
-  private def extractStr(jval: JValue, default: String = ""): String = jval match {
-    case JString(x) => x
-    case _ => default
   }
 
 }
